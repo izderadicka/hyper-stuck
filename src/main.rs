@@ -103,7 +103,8 @@ async fn test_https() -> Result<(), Error> {
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     // console_subscriber::init();
-    let file_appender = tracing_appender::rolling::daily(PathBuf::from("/root/KUNDU_WORK/RustPlayGround/hyper-stuck"), "hyper-stuck.log");
+    // let file_appender = tracing_appender::rolling::daily(PathBuf::from("/root/KUNDU_WORK/RustPlayGround/hyper-stuck"), "hyper-stuck.log");
+    let file_appender = tracing_appender::rolling::daily(PathBuf::from("./"), "hyper-stuck.log");
     let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
 
     let subscriber = FmtSubscriber::builder()

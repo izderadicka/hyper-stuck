@@ -20,3 +20,4 @@ Cargo.lock
 *.srl
 h2srv
 h2go
+*.log.*
