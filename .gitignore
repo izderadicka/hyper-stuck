@@ -18,6 +18,6 @@ Cargo.lock
 *.key
 *.csr
 *.srl
-h2srv
-h2go
+# h2srv
+# h2go
 *.log.*
