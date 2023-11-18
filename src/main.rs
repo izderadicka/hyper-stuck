@@ -33,8 +33,10 @@ async fn send_req_https(c: Arc<Client<HttpsConnector<HttpConnector>>>, bufsz: us
         .body(hyper::Body::from(buf))?;
 
     let rsp = c.request(req).await?;
+    println!("Response has version {:?}", rsp.version());
     let rsp_buf = rsp.into_body().data().await.unwrap()?;
     let put_rsp: PutRsp = serde_json::from_slice(&rsp_buf)?;
+    
 
     Ok(put_rsp.len as u64)
 }
@@ -79,7 +81,8 @@ fn new_client() -> Result<Arc<Client<HttpsConnector<HttpConnector>>>, Error> {
     let https = hyper_rustls::HttpsConnectorBuilder::new()
     .with_tls_config(get_rustls_config_dangerous()?)
     .https_only()
-    .enable_http1()
+    //.enable_http1() # with http1 works without problem
+    .enable_http2()
     .build();
 
     let client_builder = hyper::client::Client::builder();

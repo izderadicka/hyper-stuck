@@ -19,7 +19,7 @@ log = "0.4"
 env_logger = "0.8"
 tracing = "0.1"
 # tracing-subscriber = "0.2"
-hyper-rustls = "0.24"
+hyper-rustls = {version="0.24", features=["http2"]}
 rustls = {version="0.21.9", features=["dangerous_configuration"]}
 tracing-subscriber = {version="0.3.16", features=["env-filter"]}
 tracing-appender = "0.2.2"
