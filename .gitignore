@@ -21,3 +21,5 @@ Cargo.lock
 # h2srv
 # h2go
 *.log.*
+
+/h2*

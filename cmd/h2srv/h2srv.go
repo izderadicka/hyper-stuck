@@ -29,6 +29,7 @@ func DataPut(w http.ResponseWriter, r *http.Request) {
 
 	time.Sleep(100 * time.Millisecond)
 	json.NewEncoder(w).Encode(&rsp)
+	log.Println("Request len:", len(buf))
 }
 
 func startServer() {
