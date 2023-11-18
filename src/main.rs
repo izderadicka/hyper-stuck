@@ -8,7 +8,8 @@ use anyhow::Error;
 use waitgroup::WaitGroup;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Semaphore;
-use hyper::{self, Body, Request, body::HttpBody, client::{Client, HttpConnector}};
+use hyper_util::client::legacy::{connect::HttpConnector, Client};
+use hyper::{self,  Request, body::Body};
 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -30,7 +31,7 @@ async fn send_req_https(c: Arc<Client<HttpsConnector<HttpConnector>>>, bufsz: us
     let req = Request::builder()
         .method("POST")
         .uri(url)
-        .body(hyper::Body::from(buf))?;
+        .body(Full::from(buf))?;
 
     let rsp = c.request(req).await?;
     println!("Response has version {:?}", rsp.version());
@@ -77,7 +78,7 @@ impl rustls::client::ServerCertVerifier for NoCertificateVerification {
     }
 }
 
-fn new_client() -> Result<Arc<Client<HttpsConnector<HttpConnector>>>, Error> {
+fn new_client() -> Result<Arc<Client<HttpsConnector<HttpConnector>, _>>, Error> {
     let https = hyper_rustls::HttpsConnectorBuilder::new()
     .with_tls_config(get_rustls_config_dangerous()?)
     .https_only()
@@ -85,8 +86,9 @@ fn new_client() -> Result<Arc<Client<HttpsConnector<HttpConnector>>>, Error> {
     .enable_http2()
     .build();
 
-    let client_builder = hyper::client::Client::builder();
-    Ok(Arc::new(client_builder.build::<_, Body>(https)))
+    let client_builder = Client::builder(hyper_util::rt::TokioExecutor::new());
+    let client = client_builder.build(https.clone());
+    Ok(Arc::new(client))
 }
 
 async fn test_https() -> Result<(), Error> {
