@@ -81,7 +81,7 @@ fn new_client() -> Result<Arc<Client<HttpsConnector<HttpConnector>>>, Error> {
     let https = hyper_rustls::HttpsConnectorBuilder::new()
     .with_tls_config(get_rustls_config_dangerous()?)
     .https_only()
-    //.enable_http1() # with http1 works without problem
+    //.enable_http1() // with http1 works without problem
     .enable_http2()
     .build();
 
