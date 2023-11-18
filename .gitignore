@@ -23,3 +23,4 @@ Cargo.lock
 *.log.*
 
 /h2*
+/*log*

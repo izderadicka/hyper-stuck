@@ -30,6 +30,7 @@ func doReq(c *http.Client) (err error) {
 		fmt.Println(err)
 		return
 	}
+	log.Println("Response version", resp.Proto)
 	defer resp.Body.Close()
 	_, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
