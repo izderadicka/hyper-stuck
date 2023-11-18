@@ -7,7 +7,7 @@ use tracing_subscriber::FmtSubscriber;
 use anyhow::Error;
 use waitgroup::WaitGroup;
 use serde::{Deserialize, Serialize};
-use tokio::{sync::Semaphore};
+use tokio::sync::Semaphore;
 use hyper::{self, Body, Request, body::HttpBody, client::{Client, HttpConnector}};
 
 
@@ -40,7 +40,7 @@ async fn send_req_https(c: Arc<Client<HttpsConnector<HttpConnector>>>, bufsz: us
 }
 
 pub fn get_rustls_config_dangerous() -> Result<ClientConfig, Error> {
-    let mut store = rustls::RootCertStore::empty();
+    let store = rustls::RootCertStore::empty();
 
     // if you just want to add custom certificates, use this
     /*let mut buf = Vec::new();
