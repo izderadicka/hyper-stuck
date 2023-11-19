@@ -1,29 +1,35 @@
 // #![deny(warnings)]
 
+use std::net::SocketAddr;
 use std::{io, fs};
 
-use hyper::service::{ service_fn};
+use http_body_util::{Full, BodyExt};
+use hyper::body::{Incoming, Bytes};
+use hyper::service::service_fn;
 use hyper::{Method, Request, Response,  StatusCode};
 use hyper_rustls::TlsAcceptor;
+use hyper_util::rt::TokioExecutor;
+use hyper_util::server::conn::auto::Builder;
 use serde::Serialize;
+use tokio::net::TcpListener;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct PutRsp {
     #[serde(rename = "Len")]
     pub len: usize,
 }
-/* 
+
 
 /// This is our service handler. It receives a Request, routes on its
 /// path, and returns a Future of a Response.
-async fn echo(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+async fn echo(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, hyper::Error> {
     match (req.method(), req.uri().path()) {
         // Serve some instructions at /
         (&Method::POST, "/put") => {
-            let body = hyper::body::to_bytes(req.into_body()).await?;
+            let body = req.into_body().collect().await?.to_bytes();
             let resp = PutRsp { len: body.len() };
             println!("Received {} bytes", body.len());
-            Ok(Response::new(Body::from(serde_json::to_string(&resp).unwrap())))
+            Ok(Response::new(Full::from(serde_json::to_string(&resp).unwrap())))
         },
         // Return the 404 Not Found for other routes.
         _ => {
@@ -79,27 +85,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Load private key.
     let key = load_private_key("certs/server.key")?;
 
-    let addr = ([0, 0, 0, 0], 9001).into();
+    let addr: SocketAddr = ([0, 0, 0, 0], 9001).into();
 
     // Create a TCP listener via tokio.
-    let incoming = AddrIncoming::bind(&addr)?;
-    let acceptor = TlsAcceptor::builder()
+    let incoming = TcpListener::bind(&addr).await?;
+    println!("Listening on http://{}", addr);
+    let mut acceptor = TlsAcceptor::builder()
         .with_single_cert(certs, key)
         .map_err(|e| error(format!("{}", e)))?
         .with_all_versions_alpn()
         .with_incoming(incoming);
 
-    let service = make_service_fn(|_| async { Ok::<_, hyper::Error>(service_fn(echo)) });
+    let service = service_fn(echo);
 
-    let server = Server::builder(acceptor).serve(service);
-
-    println!("Listening on http://{}", addr);
-
-    server.await?;
-
+    loop {
+        let (tcp_stream, _remote_addr) = acceptor.accept().await.unwrap();
+        if let Err(err) = Builder::new(TokioExecutor::new())
+            .serve_connection(tcp_stream, service)
+            .await
+        {
+            eprintln!("failed to serve connection: {err:#}");
+        }
+    }
     Ok(())
 }
-
-*/
-
-fn main() {}

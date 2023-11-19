@@ -2,11 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"io"
 	"log"
 	"net/http"
-	"os"
-	"strconv"
 
 	"github.com/gorilla/mux"
 	"golang.org/x/net/http2"
@@ -34,7 +33,7 @@ func DataPut(w http.ResponseWriter, r *http.Request) {
 	log.Println("Request len:", len(buf))
 }
 
-func startServer(maxUploadBuffer uint32) {
+func startServer(maxUploadBuffer int32, maxStreams uint32) {
 
 	r := mux.NewRouter()
 
@@ -46,7 +45,8 @@ func startServer(maxUploadBuffer uint32) {
 	}
 
 	http2.ConfigureServer(srv, &http2.Server{
-		MaxUploadBufferPerConnection: int32(maxUploadBuffer),
+		MaxUploadBufferPerConnection: maxUploadBuffer,
+		MaxConcurrentStreams:         maxStreams,
 	})
 
 	log.Fatal(srv.ListenAndServeTLS("certs/server.crt", "certs/server.key"))
@@ -54,10 +54,9 @@ func startServer(maxUploadBuffer uint32) {
 }
 
 func main() {
-	//read maxUploadBuffer from cli arg
-	maxUploadBuffer := uint64(65535)
-	if len(os.Args) > 1 {
-		maxUploadBuffer, _ = strconv.ParseUint(os.Args[1], 10, 32)
-	}
-	startServer(uint32(maxUploadBuffer))
+	maxUploadBuffer := flag.Uint64("upload-buffer", 65535, "maximum upload buffer size")
+	maxStreams := flag.Uint("streams", 100, "maximum number of concurrent streams")
+
+	flag.Parse()
+	startServer(int32(*maxUploadBuffer), uint32(*maxStreams))
 }

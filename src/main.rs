@@ -17,8 +17,18 @@ use waitgroup::WaitGroup;
 
 #[derive(clap::Parser, Debug)]
 pub struct Options {
-    #[clap(long, help = "Use http1 requests")]
+    #[clap(long, help = "Use http1 requests", env="HTEST_HTTP1")]
     http1: bool,
+    #[clap(long, help = "Number of requests to send", default_value="300", env="HTEST_REQ_COUNT")]
+    req_count: usize,
+    #[clap(long, help = "URL to connect to", env="HTEST_URL", default_value="https://localhost:9011/put")]
+    url: String,
+    #[clap(long, env="HTEST_FUT_LIMIT", default_value="450", help="Number of concurrent requests")]
+    fut_limit: usize,
+    #[clap(long, env="HTEST_BUF_SIZE", default_value="262144", help="Request body size")]
+    bufsz: usize,
+    #[clap(long, env="HTEST_CONN_COUNT", default_value="1", help="Number of clients/connections")]
+    conn_count: usize ,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -106,13 +116,8 @@ fn new_client(http1: bool) -> Result<Client<HttpsConnector<HttpConnector>, Full<
     Ok(client)
 }
 
-async fn test_https(http1: bool) -> Result<(), Error> {
-    let url = std::env::var("HTEST_URL")?;
-    let fut_limit: usize = std::env::var("HTEST_FUT_LIMIT")?.parse()?;
-    let req_count: usize = std::env::var("HTEST_REQ_COUNT")?.parse()?;
-    let bufsz: usize = std::env::var("HTEST_BUF_SIZE")?.parse()?;
-    let conn_count: usize = std::env::var("HTEST_CONN_COUNT")?.parse()?;
-
+async fn test_https(args: Options) -> Result<(), Error> {
+    
     let counter = Arc::new(Mutex::new(ResultCounter {
         count: 0,
         bytes: 0,
@@ -121,20 +126,19 @@ async fn test_https(http1: bool) -> Result<(), Error> {
 
     let mut client_vec = Vec::new();
 
-    for _ in 0..conn_count {
-        let c = Arc::new(new_client(http1)?);
+    for _ in 0..args.conn_count {
+        let c = Arc::new(new_client(args.http1)?);
         client_vec.push(c)
     }
 
-    let allowed = Arc::new(Semaphore::new(fut_limit));
+    let allowed = Arc::new(Semaphore::new(args.fut_limit));
 
     let wg = WaitGroup::new();
 
-    for i in 0..conn_count {
-        send_req_https(client_vec[i].clone(), bufsz, url.as_str()).await?;
-    }
-
-    for i in 0..req_count {
+    let url = args.url;
+    let conn_count = args.conn_count;
+    let bufsz = args.bufsz;
+    for i in 0..args.req_count {
         if i % 100 == 0 {
             println!("Iteration i={}", i);
         }
@@ -144,10 +148,11 @@ async fn test_https(http1: bool) -> Result<(), Error> {
         let cc = client_vec[i % conn_count].clone();
 
         //let cc = c.clone();
-        let url_clone = url.clone();
+        
         let counter_clone = counter.clone();
+        let url_clone = url.clone();
         tokio::spawn(async move {
-            match send_req_https(cc, bufsz, url_clone.as_str()).await {
+            match send_req_https(cc, bufsz, &url_clone).await {
                 Ok(bytes) => {
                     let mut counter = counter_clone.lock().unwrap();
                     counter.count += 1;
@@ -192,7 +197,7 @@ async fn main() -> Result<(), Error> {
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
-    let _ = test_https(args.http1).await?;
+    let _ = test_https(args).await?;
     std::mem::forget(guard);
     Ok(())
 }
