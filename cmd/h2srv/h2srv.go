@@ -5,8 +5,11 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 
 	"github.com/gorilla/mux"
+	"golang.org/x/net/http2"
 )
 
 type PutRsp struct {
@@ -31,16 +34,30 @@ func DataPut(w http.ResponseWriter, r *http.Request) {
 	log.Println("Request len:", len(buf))
 }
 
-func startServer() {
+func startServer(maxUploadBuffer uint32) {
 
 	r := mux.NewRouter()
 
 	r.HandleFunc("/put", DataPut).Methods("POST")
 
-	log.Fatal(http.ListenAndServeTLS(":9001", "certs/server.crt", "certs/server.key", r))
+	srv := &http.Server{
+		Addr:    ":9001",
+		Handler: r,
+	}
+
+	http2.ConfigureServer(srv, &http2.Server{
+		MaxUploadBufferPerConnection: int32(maxUploadBuffer),
+	})
+
+	log.Fatal(srv.ListenAndServeTLS("certs/server.crt", "certs/server.key"))
 	//log.Fatal(http.ListenAndServe(":9001", r))
 }
 
 func main() {
-	startServer()
+	//read maxUploadBuffer from cli arg
+	maxUploadBuffer := uint64(65535)
+	if len(os.Args) > 1 {
+		maxUploadBuffer, _ = strconv.ParseUint(os.Args[1], 10, 32)
+	}
+	startServer(uint32(maxUploadBuffer))
 }
