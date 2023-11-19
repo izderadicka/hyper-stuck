@@ -2,10 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -14,9 +13,9 @@ type PutRsp struct {
 	Len int
 }
 
-//DataPut ...
+// DataPut ...
 func DataPut(w http.ResponseWriter, r *http.Request) {
-	buf, err := ioutil.ReadAll(r.Body)
+	buf, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -27,7 +26,7 @@ func DataPut(w http.ResponseWriter, r *http.Request) {
 		Len: len(buf),
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	// time.Sleep(100 * time.Millisecond)
 	json.NewEncoder(w).Encode(&rsp)
 	log.Println("Request len:", len(buf))
 }
