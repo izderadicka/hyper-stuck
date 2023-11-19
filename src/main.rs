@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::path::PathBuf;
 use hyper_rustls::HttpsConnector;
+use hyper_util::client::legacy::connect::HttpConnector;
 use rustls::ClientConfig;
 use tracing_subscriber::FmtSubscriber;
 
@@ -8,8 +9,10 @@ use anyhow::Error;
 use waitgroup::WaitGroup;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Semaphore;
-use hyper_util::client::legacy::{connect::HttpConnector, Client};
-use hyper::{self,  Request, body::Body};
+use hyper_util::client::legacy::Client;
+use hyper::{self,  Request};
+use http_body_util::{BodyExt, Full};
+use hyper::body::Bytes;
 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -24,7 +27,7 @@ struct ResultCounter {
     pub bytes: u64
 }
 
-async fn send_req_https(c: Arc<Client<HttpsConnector<HttpConnector>>>, bufsz: usize, url: &str) -> Result<u64, Error> {
+async fn send_req_https(c: Arc<Client<HttpsConnector<HttpConnector>, Full<Bytes>>>, bufsz: usize, url: &str) -> Result<u64, Error> {
     //let sz= rand::thread_rng().gen_range(10240..(2*1024*1024));
     let buf = vec![0u8; bufsz];
 
@@ -35,7 +38,7 @@ async fn send_req_https(c: Arc<Client<HttpsConnector<HttpConnector>>>, bufsz: us
 
     let rsp = c.request(req).await?;
     println!("Response has version {:?}", rsp.version());
-    let rsp_buf = rsp.into_body().data().await.unwrap()?;
+    let rsp_buf = rsp.into_body().collect().await?.to_bytes();
     let put_rsp: PutRsp = serde_json::from_slice(&rsp_buf)?;
     
 
@@ -78,17 +81,17 @@ impl rustls::client::ServerCertVerifier for NoCertificateVerification {
     }
 }
 
-fn new_client() -> Result<Arc<Client<HttpsConnector<HttpConnector>, _>>, Error> {
+fn new_client() -> Result<Client<HttpsConnector<HttpConnector>, Full<Bytes>>, Error> {
     let https = hyper_rustls::HttpsConnectorBuilder::new()
     .with_tls_config(get_rustls_config_dangerous()?)
     .https_only()
-    //.enable_http1() // with http1 works without problem
-    .enable_http2()
+    .enable_http1() // with http1 works without problem
+    //.enable_http2()
     .build();
 
     let client_builder = Client::builder(hyper_util::rt::TokioExecutor::new());
-    let client = client_builder.build(https.clone());
-    Ok(Arc::new(client))
+    let client = client_builder.build(https);
+    Ok(client)
 }
 
 async fn test_https() -> Result<(), Error> {
@@ -103,7 +106,7 @@ async fn test_https() -> Result<(), Error> {
     let mut client_vec = Vec::new();
 
     for _ in 0..conn_count {
-        let c = new_client()?;
+        let c = Arc::new(new_client()?);
         client_vec.push(c)
     }
 

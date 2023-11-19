@@ -1,10 +1,9 @@
-#![deny(warnings)]
+// #![deny(warnings)]
 
 use std::{io, fs};
 
-use hyper::server::conn::AddrIncoming;
-use hyper::service::{make_service_fn, service_fn};
-use hyper::{Body, Method, Request, Response, Server, StatusCode};
+use hyper::service::{ service_fn};
+use hyper::{Method, Request, Response,  StatusCode};
 use hyper_rustls::TlsAcceptor;
 use serde::Serialize;
 
@@ -13,6 +12,7 @@ pub struct PutRsp {
     #[serde(rename = "Len")]
     pub len: usize,
 }
+/* 
 
 /// This is our service handler. It receives a Request, routes on its
 /// path, and returns a Future of a Response.
@@ -99,3 +99,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     Ok(())
 }
+
+*/
+
+fn main() {}
