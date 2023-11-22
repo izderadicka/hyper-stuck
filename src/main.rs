@@ -21,7 +21,7 @@ pub struct Options {
     http1: bool,
     #[clap(long, help = "Number of requests to send", default_value="300", env="HTEST_REQ_COUNT")]
     req_count: usize,
-    #[clap(long, help = "URL to connect to", env="HTEST_URL", default_value="https://localhost:9011/put")]
+    #[clap(long, help = "URL to connect to", env="HTEST_URL", default_value="https://localhost:9001/put")]
     url: String,
     #[clap(long, env="HTEST_FUT_LIMIT", default_value="450", help="Number of concurrent requests")]
     fut_limit: usize,
@@ -57,7 +57,7 @@ async fn send_req_https(
         .body(Full::from(buf))?;
 
     let rsp = c.request(req).await?;
-    println!("Response has version {:?}", rsp.version());
+    println!("Response status {} version {:?}", rsp.status(),rsp.version());
     let rsp_buf = rsp.into_body().collect().await?.to_bytes();
     let put_rsp: PutRsp = serde_json::from_slice(&rsp_buf)?;
 
